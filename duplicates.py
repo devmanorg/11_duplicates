@@ -20,20 +20,20 @@ class File:
         self._path = path
 
     @property
-    def name(self):
+    def f_name(self):
         return self._path.name.lower()
 
     @property
-    def path(self):
+    def f_path(self):
         return str(self._path)
 
     @property
-    def size(self):
+    def f_size(self):
         return os.stat(str(self._path)).st_size
 
     @property
     def duplicate_indicator(self):
-        return '{}{}'.format(self.name, self.size)
+        return '{}{}'.format(self.f_name, self.f_size)
 
 
 class FilesCollection(list):
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             logging.info(
                 "following files are duplicates: {duplicated_files}".format(
                     duplicated_files=", ".join(
-                        [_file.path for _file in group_of_file]
+                        [_file.f_path for _file in group_of_file]
                     )
                 )
             )
