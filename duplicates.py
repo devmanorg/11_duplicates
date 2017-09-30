@@ -1,67 +1,96 @@
 import sys
 import pathlib
 import os
-from collections import Counter
+import argparse
+import logging
+import operator
+import itertools
 
 
-def get_list_of_files_info(path, files_list):
+VERBOSITY_TO_LOGGING_LEVELS = {
+    0: logging.WARNING,
+    1: logging.INFO,
+    2: logging.DEBUG,
+}
+
+
+class File:
+
+    def __init__(self, path):
+        self._path = path
+
+    @property
+    def name(self):
+        return self._path.name.lower()
+
+    @property
+    def path(self):
+        return str(self._path)
+
+    @property
+    def size(self):
+        return os.stat(str(self._path)).st_size
+
+    @property
+    def duplicate_indicator(self):
+        return '{}{}'.format(self.name, self.size)
+
+
+class FilesCollection(list):
+
+    def __init__(self, *args):
+        super(FilesCollection, self).__init__(args)
+
+    def grouped_by_file_name_and_size(self):
+        get_attr = operator.attrgetter('duplicate_indicator')
+        return [list(g) for k, g in itertools.groupby(sorted(self, key=get_attr), get_attr)]
+
+
+def get_list_of_files(path, list_of_files):
     try:
         if path.is_dir() and os.listdir(str(path)):
             for child in path.iterdir():
-                get_list_of_files_info(child, files_list)
+                get_list_of_files(child, list_of_files)
         elif path.is_file():
-            files_list.append(('{}{}'.format(
-                path.name.lower(), os.stat(str(path)).st_size
-            ), str(path)))
+            list_of_files.append(File(path))
     except PermissionError:
-        print("Skipping, as Access denied to the path: ".format(path))
-    return files_list
+        logging.error("Skipping, as Access denied to the path: ".format(path))
+    return list_of_files
 
 
-def validate_path_from_input():
-    path_to_folder = None
-    try:
-        path_to_folder = pathlib.Path(sys.argv[1])
-    except IndexError:
-        return "please provide path to folder. " \
-               "Example: python duplicates.py <path_to_folder>", None
-    except OSError:
-        return "Specified input {} is not a correct path".format(
-            path_to_folder
-        ), None
-    if not path_to_folder.exists():
-        return "Specified path {} does not exist ".format(
-            path_to_folder
-        ), None
-    return None, path_to_folder
+def is_correct_path(directory):
+    if directory:
+        return pathlib.Path(directory).exists()
+    return False
 
-
-def get_duplicated_files(files_list):
-    same_files_counter = Counter([file[0] for file in files_list])
-    total_list_of_duplicates = []
-    for filename_to_size_key, counter in same_files_counter.items():
-        if counter > 1:
-            total_list_of_duplicates.append(
-                [file[1] for file in files_list
-                 if file[0] == filename_to_size_key]
-            )
-    return total_list_of_duplicates
 
 if __name__ == '__main__':
-    list_of_collect_files = []
-    error, path_to_folder = validate_path_from_input()
-    if error:
-        print(error)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument('--directory', '-d', default=None)
+    args = parser.parse_args()
+    logging_level = VERBOSITY_TO_LOGGING_LEVELS[args.verbose]
+
+    logging.basicConfig(level=logging_level)
+
+    if not is_correct_path(args.directory):
+        logging.error("Specified path is not correct: {dir}".format(dir=args.directory))
         sys.exit(1)
-    files_list = get_list_of_files_info(path_to_folder, list_of_collect_files)
-    if not files_list:
-        print("no files found in the specified path")
+
+    files_collection = FilesCollection()
+
+    collected_files = get_list_of_files(pathlib.Path(args.directory), files_collection)
+    if not collected_files:
+        logging.error("no files found in the specified path")
         sys.exit(1)
-    duplicated_files = get_duplicated_files(files_list)
-    if not duplicated_files:
-        print("duplicated files not found in the specified folder")
-        sys.exit(1)
-    for duplicated_files_chain in duplicated_files:
-        print(
-            "following files are duplicates: {}".format(duplicated_files_chain)
-        )
+
+    list_of_files_grouped_by_duplicate_indicator = collected_files.grouped_by_file_name_and_size()
+
+    for group_of_file in list_of_files_grouped_by_duplicate_indicator:
+        if len(group_of_file) > 1:
+            logging.info(
+                "following files are duplicates: {duplicated_files}".format(
+                    duplicated_files=", ".join([_file.path for _file in group_of_file])
+                )
+            )
