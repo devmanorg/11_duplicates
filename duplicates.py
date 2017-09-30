@@ -43,7 +43,9 @@ class FilesCollection(list):
 
     def grouped_by_file_name_and_size(self):
         get_attr = operator.attrgetter('duplicate_indicator')
-        return [list(g) for k, g in itertools.groupby(sorted(self, key=get_attr), get_attr)]
+        return [list(g) for k, g in itertools.groupby(
+            sorted(self, key=get_attr), get_attr
+        )]
 
 
 def get_list_of_files(path, list_of_files):
@@ -75,22 +77,29 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging_level)
 
     if not is_correct_path(args.directory):
-        logging.error("Specified path is not correct: {dir}".format(dir=args.directory))
+        logging.error(
+            "Specified path is not correct: {dir}".format(dir=args.directory)
+        )
         sys.exit(1)
 
     files_collection = FilesCollection()
 
-    collected_files = get_list_of_files(pathlib.Path(args.directory), files_collection)
+    collected_files = get_list_of_files(
+        pathlib.Path(args.directory), files_collection
+    )
     if not collected_files:
         logging.error("no files found in the specified path")
         sys.exit(1)
 
-    list_of_files_grouped_by_duplicate_indicator = collected_files.grouped_by_file_name_and_size()
+    list_of_files_grouped_by_duplicate_indicator = collected_files.\
+        grouped_by_file_name_and_size()
 
     for group_of_file in list_of_files_grouped_by_duplicate_indicator:
         if len(group_of_file) > 1:
             logging.info(
                 "following files are duplicates: {duplicated_files}".format(
-                    duplicated_files=", ".join([_file.path for _file in group_of_file])
+                    duplicated_files=", ".join(
+                        [_file.path for _file in group_of_file]
+                    )
                 )
             )
