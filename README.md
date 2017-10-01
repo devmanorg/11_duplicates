@@ -8,10 +8,15 @@ required python 3.5 installed
 # How to install and run
 
 to run it: 
-
-python duplicates.py --directory <directory_to_loop> -v 
-on linux might require python3 duplicates.py --directory <directory_to_loop> -v 
-
+on windows:
+```
+    python duplicates.py --directory "<directory_to_loop>" 
+    python duplicates.py --directory "C:\Users\TestFolder"
+```
+on linux might require 
+```
+python3 duplicates.py --directory <directory_to_loop> 
+```
 directory_to_loop shall be in the format of your system
 
 Supported Systems: Windows, Unix

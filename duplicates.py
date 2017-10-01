@@ -41,11 +41,14 @@ class FilesCollection(list):
     def __init__(self, *args):
         super(FilesCollection, self).__init__(args)
 
-    def grouped_by_file_name_and_size(self):
+    def grouped_by_duplicate_indicator(self):
         get_attr = operator.attrgetter('duplicate_indicator')
         return [list(g) for k, g in itertools.groupby(
             sorted(self, key=get_attr), get_attr
         )]
+
+    def __str__(self):
+        return ', '.join([_file.f_path for _file in self])
 
 
 def get_list_of_files(path, list_of_files):
@@ -62,12 +65,15 @@ def get_list_of_files(path, list_of_files):
 
 def is_correct_path(directory):
     if directory:
-        return pathlib.Path(directory).exists()
+        try:
+            return pathlib.Path(directory).exists()
+        except OSError:
+            return False
     return False
 
 
 if __name__ == '__main__':
-
+    duplicate_counter = 0
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument('--directory', '-d', default=None)
@@ -87,19 +93,24 @@ if __name__ == '__main__':
     collected_files = get_list_of_files(
         pathlib.Path(args.directory), files_collection
     )
-    if not collected_files:
-        logging.error("no files found in the specified path")
-        sys.exit(1)
+    logging.debug("collected files {}".format(collected_files))
 
-    list_of_files_grouped_by_duplicate_indicator = collected_files.\
-        grouped_by_file_name_and_size()
+    list_of_files_grouped_by_duplicate_indicator = collected_files. \
+        grouped_by_duplicate_indicator()
 
     for group_of_file in list_of_files_grouped_by_duplicate_indicator:
         if len(group_of_file) > 1:
-            logging.info(
+            duplicate_counter += 1
+            print(
                 "following files are duplicates: {duplicated_files}".format(
                     duplicated_files=", ".join(
                         [_file.f_path for _file in group_of_file]
                     )
                 )
             )
+    if not bool(duplicate_counter):
+        print(
+            "No duplicate files found in the provided directory: {}".format(
+                args.directory
+            )
+        )
